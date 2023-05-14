@@ -10,7 +10,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 Tour of R project:
- 
+
 - So far, just a file with a .Rproj extension.  This file indicates "home base" for this project - the root directory.  
 - If we move this project directory somewhere else on our hard drive, that .Rproj goes with it.  
 - We can use that to our advantage to ensure all file paths are coded relative to that file.
@@ -31,15 +31,13 @@ Tour of R Markdown:
 Let's load some packages!  Note: not a bad idea to do in setup chunk, but make sure to set up code chunk headers correctly!
 
 ```{r load packages}
+library(poLCA) ### LCA package with some more data we'll use
 library(tidyverse) 
   ### dialect of R - cleans up and standardizes a lot of wrangling and data vis.
   ### note the packages listed in the message!
 
 library(here) ### helps with creating relative pathways relative to .Rproj
 library(palmerpenguins) ### some data we'll explore
-library(poLCA) ### LCA package with some more data we'll use
-
-### NOTE: loading this order, see the message/warning about dplyr::select!
 ```
 
 At this point, knit the document to create a .html - note the warnings and errors - go back and adjust the setup chunk to avoid this.
@@ -106,16 +104,34 @@ Here we will:
 - Run a simple linear regression to see how R handles categoricals
 
 ```{r}
-penguins <- palmerpenguins::penguins ### NOT normal way to load data - usually reading in a CSV
+penguins <- palmerpenguins::penguins 
+### NOT normal way to load data - usually reading in a CSV
+### could also do data(penguins)
 
 summary(penguins)
 glimpse(penguins)
 head(penguins)
 
-### Create three categorical columns from existing numerics
+peng_subset <- penguins %>%
+  select(species, bill_depth_mm, body_mass_g) %>%
+  filter(species %in% c('Adelie', 'Gentoo'))
+
+peng_sum <- penguins %>%
+  group_by(species) %>%
+  mutate(mass_normalized = body_mass_g / max(body_mass_g, na.rm = TRUE)) %>%
+  summarize(mean_mass = mean(body_mass_g, na.rm = TRUE),
+            mean_norm = mean(mass_normalized, na.rm = TRUE),
+            bill_ratio = mean(bill_length_mm / bill_depth_mm, na.rm = TRUE))
+```
+
+```{r}
+### Create new categorical columns from existing numerics
 peng_cats <- penguins %>%
   drop_na() %>%
-  rename(bl = bill_length_mm, bd = bill_depth_mm, fl = flipper_length_mm, bm = body_mass_g) %>%
+  rename(bl = bill_length_mm, 
+         bd = bill_depth_mm, 
+         fl = flipper_length_mm, 
+         bm = body_mass_g) %>%
   mutate(bl_cat = ifelse(bl > 43.92, 'long', 'short')) %>%
   # mutate(bl_cat = ifelse(bl > mean(bl, na.rm = TRUE), 'long', 'short')) %>%
   mutate(bd_cat = case_when(bd < 15.6 ~ 'shallow',
@@ -123,6 +139,9 @@ peng_cats <- penguins %>%
                             TRUE ~ 'medium')) %>%
   mutate(fl_quartile = ntile(fl, 4),          ### careful of handling NAs!
          fl_quartile = factor(fl_quartile))   ### convert numeric to factor (or character?)
+
+### examine a linear model of body mass as a function of a combo of
+### different numeric and categorical variables
 peng_lm <- lm(bm ~ bl + bd_cat + fl_quartile + species, data = peng_cats)
 
 summary(peng_lm) ### note reference values and effect of nonref values
@@ -175,7 +194,7 @@ peng_cats3 <- peng_cats2 %>%
 Now let's try some wrangling with some data on cheating in high school, built into the `poLCA` package (polytomous latent class analysis).
 
 ```{r}
-data(cheating) ### or poLCA::cheating
+data(cheating) ### poLCA::cheating doesn't work here... explain!
 
 ### examine the data in a few ways: summary(), ggplot()
 
@@ -183,8 +202,6 @@ summary(cheating)
 glimpse(cheating)
 ?cheating
 
-cheating <- cheating %>%
-  janitor::clean_names()
 ```
 
 Some things to note:
@@ -193,6 +210,18 @@ Some things to note:
 - the values are all double precision floating point numbers, except GPA which is integer
 - all except GPA are scored as 1 (FALSE) or 2 (TRUE)
 - GPA is scored as 1 (GPA < 3), 2 (3.00-3.25), 3 (3.26-3.50), 4 (3.51-3.75) and 5 (3.76-4.00).
+
+```{r}
+cheating <- cheating %>%
+  janitor::clean_names()
+
+cheating_sum <- cheating %>%
+  group_by(gpa) %>%
+  summarize(mean_lieexam = mean(lieexam),
+            mean_liepaper = mean(liepaper),
+            mean_fraud = mean(fraud),
+            mean_copyexam = mean(copyexam))
+```
 
 Thoughts, questions?
 
@@ -211,6 +240,8 @@ So far, we're not explicitly working with factors, though the categorical values
 
 ```{r}
 
+gpa_lvls <- c('c', 'bminus', 'b', 'bplus', 'a') ### leave out missing?
+
 cheat_recode <- cheating %>%
   mutate(lieexam_lgl  = ifelse(lieexam == 1, FALSE, TRUE),
          liepaper_lgl = (liepaper == 2),
@@ -223,23 +254,22 @@ cheat_recode <- cheating %>%
                              gpa == 3 ~ 'b',
                              gpa == 4 ~ 'bplus',
                              gpa == 5 ~ 'a',
-                             TRUE     ~ NA_character_))
+                             TRUE     ~ NA_character_)) #%>%
+  # mutate(gpa_cat = factor(gpa_cat, levels = gpa_lvls))
 
+ggplot(cheat_recode) +
+  geom_bar(aes(x = gpa_cat), fill = 'slateblue', color = 'darkblue') +
+  theme_minimal() +
+  labs(x = 'GPA')
+### note grades not in order! turn into a factor!
+```
 
-### see across() for applying mutate across multiple columns simultaneously!
-### also take advantage of indexes to assign values from a vector
-gpa_lvls <- c('c', 'bminus', 'b', 'bplus', 'a') ### leave out missing?
+See `across()` for applying mutate across multiple columns simultaneously!  Also we can take advantage of indexes to assign values from a vector.
 
+```{r more methods for mutate}
 cheat_recode2 <- cheating %>%
   mutate(across(.cols = where(is.double), .fns = ~(.x == 2), .names = '{.col}_lgl')) %>%
   mutate(gpa_chr = gpa_lvls[gpa])
-
-
-ggplot(cheat_recode2) +
-  geom_bar(aes(x = gpa_chr), fill = 'slateblue', color = 'darkblue') +
-  theme_minimal() +
-  labs(x = 'GPA')
-  
 ```
 
 Using factors, we can turn the gpa_cat column from character to a factor and control the order on the plot, but ALSO the order in which a model function (e.g., `lm()` and probably LCA and MPlus modeling functions) interprets the levels!
@@ -259,8 +289,6 @@ head(cheat_fct$gpa_chr)
 head(cheat_fct$gpa_fct)
 head(cheat_fct$gpa_ord)
 ```
-
-## Some more data visualization fun with ggplot!
 
 ## Tidy up and write out a cleaned/prepped dataset
 

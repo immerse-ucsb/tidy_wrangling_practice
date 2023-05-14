@@ -399,41 +399,15 @@ leave this chunk and go to another.</li>
 <li>can type manually, or shortcuts or menu.</li>
 </ul></li>
 </ul>
-<p>Let’s load some packages!</p>
-<pre class="r"><code>library(tidyverse) ### dialect of R - cleans up and standardizes a lot of wrangling and data vis</code></pre>
-<pre><code>## Warning: package &#39;tidyverse&#39; was built under R version 4.2.2</code></pre>
-<pre><code>## Warning: package &#39;ggplot2&#39; was built under R version 4.2.2</code></pre>
-<pre><code>## Warning: package &#39;tidyr&#39; was built under R version 4.2.2</code></pre>
-<pre><code>## Warning: package &#39;readr&#39; was built under R version 4.2.2</code></pre>
-<pre><code>## Warning: package &#39;purrr&#39; was built under R version 4.2.2</code></pre>
-<pre><code>## Warning: package &#39;dplyr&#39; was built under R version 4.2.2</code></pre>
-<pre><code>## Warning: package &#39;stringr&#39; was built under R version 4.2.2</code></pre>
-<pre><code>## Warning: package &#39;forcats&#39; was built under R version 4.2.2</code></pre>
-<pre><code>## Warning: package &#39;lubridate&#39; was built under R version 4.2.2</code></pre>
-<pre><code>## ── Attaching core tidyverse packages ──────────────────────── tidyverse 2.0.0 ──
-## ✔ dplyr     1.1.0     ✔ readr     2.1.4
-## ✔ forcats   1.0.0     ✔ stringr   1.5.0
-## ✔ ggplot2   3.4.1     ✔ tibble    3.1.8
-## ✔ lubridate 1.9.2     ✔ tidyr     1.3.0
-## ✔ purrr     1.0.1     
-## ── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──
-## ✖ dplyr::filter() masks stats::filter()
-## ✖ dplyr::lag()    masks stats::lag()
-## ℹ Use the ]8;;http://conflicted.r-lib.org/conflicted package]8;; to force all conflicts to become errors</code></pre>
-<pre class="r"><code>library(here) ### helps with creating relative pathways relative to .Rproj</code></pre>
-<pre><code>## here() starts at C:/Users/casey/Documents/github/day3_wrangling_practice</code></pre>
-<pre class="r"><code>library(palmerpenguins) ### some data we&#39;ll explore</code></pre>
-<pre><code>## Warning: package &#39;palmerpenguins&#39; was built under R version 4.2.2</code></pre>
-<pre class="r"><code>library(poLCA) ### LCA package with some more data we&#39;ll use</code></pre>
-<pre><code>## Warning: package &#39;poLCA&#39; was built under R version 4.2.3</code></pre>
-<pre><code>## Loading required package: scatterplot3d
-## Loading required package: MASS
-## 
-## Attaching package: &#39;MASS&#39;
-## 
-## The following object is masked from &#39;package:dplyr&#39;:
-## 
-##     select</code></pre>
+<p>Let’s load some packages! Note: not a bad idea to do in setup chunk,
+but make sure to set up code chunk headers correctly!</p>
+<pre class="r"><code>library(poLCA) ### LCA package with some more data we&#39;ll use
+library(tidyverse) 
+  ### dialect of R - cleans up and standardizes a lot of wrangling and data vis.
+  ### note the packages listed in the message!
+
+library(here) ### helps with creating relative pathways relative to .Rproj
+library(palmerpenguins) ### some data we&#39;ll explore</code></pre>
 <p>At this point, knit the document to create a .html - note the
 warnings and errors - go back and adjust the setup chunk to avoid
 this.</p>
@@ -502,9 +476,373 @@ to R) for communicating flow - also vertical organization, spacing, etc
 to make it easy to read</li>
 <li><code>pivot_wider</code> and <code>pivot_longer</code> (older:
 <code>spread</code> and <code>gather</code>) are key <code>tidyr</code>
-functions to go from wide to long and back</li>
+functions to go from wide to long and back, depending on needs of a
+modeling function</li>
 </ul>
 </div>
+</div>
+<div id="enough-chitchat-lets-get-to-it" class="section level2">
+<h2>Enough chitchat, let’s get to it</h2>
+<p>Several use cases to explore, focusing on working with discrete
+variables:</p>
+<ul>
+<li>continuous variable but want to turn it into discrete, e.g., binning
+income levels
+<ul>
+<li>binary vs. nominal vs. ordinal (or dichotomous vs. polytomous)</li>
+<li><code>ntile()</code>, <code>ifelse()</code>, and
+<code>case_when()</code></li>
+</ul></li>
+<li>multi-value discretes as factors - ordered or unordered</li>
+<li>spreading multi-valued discretes into multiple dummies</li>
+</ul>
+<p>Here we will:</p>
+<ul>
+<li>Load a dataset built into an R package and inspect it</li>
+<li>Convert some columns into categoricals</li>
+<li>Run a simple linear regression to see how R handles
+categoricals</li>
+</ul>
+<pre class="r"><code>penguins &lt;- palmerpenguins::penguins 
+### NOT normal way to load data - usually reading in a CSV
+### could also do data(penguins)
+
+summary(penguins)</code></pre>
+<pre><code>##       species          island    bill_length_mm  bill_depth_mm  
+##  Adelie   :152   Biscoe   :168   Min.   :32.10   Min.   :13.10  
+##  Chinstrap: 68   Dream    :124   1st Qu.:39.23   1st Qu.:15.60  
+##  Gentoo   :124   Torgersen: 52   Median :44.45   Median :17.30  
+##                                  Mean   :43.92   Mean   :17.15  
+##                                  3rd Qu.:48.50   3rd Qu.:18.70  
+##                                  Max.   :59.60   Max.   :21.50  
+##                                  NA&#39;s   :2       NA&#39;s   :2      
+##  flipper_length_mm  body_mass_g       sex           year     
+##  Min.   :172.0     Min.   :2700   female:165   Min.   :2007  
+##  1st Qu.:190.0     1st Qu.:3550   male  :168   1st Qu.:2007  
+##  Median :197.0     Median :4050   NA&#39;s  : 11   Median :2008  
+##  Mean   :200.9     Mean   :4202                Mean   :2008  
+##  3rd Qu.:213.0     3rd Qu.:4750                3rd Qu.:2009  
+##  Max.   :231.0     Max.   :6300                Max.   :2009  
+##  NA&#39;s   :2         NA&#39;s   :2</code></pre>
+<pre class="r"><code>glimpse(penguins)</code></pre>
+<pre><code>## Rows: 344
+## Columns: 8
+## $ species           &lt;fct&gt; Adelie, Adelie, Adelie, Adelie, Adelie, Adelie, Adel…
+## $ island            &lt;fct&gt; Torgersen, Torgersen, Torgersen, Torgersen, Torgerse…
+## $ bill_length_mm    &lt;dbl&gt; 39.1, 39.5, 40.3, NA, 36.7, 39.3, 38.9, 39.2, 34.1, …
+## $ bill_depth_mm     &lt;dbl&gt; 18.7, 17.4, 18.0, NA, 19.3, 20.6, 17.8, 19.6, 18.1, …
+## $ flipper_length_mm &lt;int&gt; 181, 186, 195, NA, 193, 190, 181, 195, 193, 190, 186…
+## $ body_mass_g       &lt;int&gt; 3750, 3800, 3250, NA, 3450, 3650, 3625, 4675, 3475, …
+## $ sex               &lt;fct&gt; male, female, female, NA, female, male, female, male…
+## $ year              &lt;int&gt; 2007, 2007, 2007, 2007, 2007, 2007, 2007, 2007, 2007…</code></pre>
+<pre class="r"><code>head(penguins)</code></pre>
+<pre><code>## # A tibble: 6 × 8
+##   species island    bill_length_mm bill_depth_mm flipper_l…¹ body_…² sex    year
+##   &lt;fct&gt;   &lt;fct&gt;              &lt;dbl&gt;         &lt;dbl&gt;       &lt;int&gt;   &lt;int&gt; &lt;fct&gt; &lt;int&gt;
+## 1 Adelie  Torgersen           39.1          18.7         181    3750 male   2007
+## 2 Adelie  Torgersen           39.5          17.4         186    3800 fema…  2007
+## 3 Adelie  Torgersen           40.3          18           195    3250 fema…  2007
+## 4 Adelie  Torgersen           NA            NA            NA      NA &lt;NA&gt;   2007
+## 5 Adelie  Torgersen           36.7          19.3         193    3450 fema…  2007
+## 6 Adelie  Torgersen           39.3          20.6         190    3650 male   2007
+## # … with abbreviated variable names ¹​flipper_length_mm, ²​body_mass_g</code></pre>
+<pre class="r"><code>peng_subset &lt;- penguins %&gt;%
+  select(species, bill_depth_mm, body_mass_g) %&gt;%
+  filter(species %in% c(&#39;Adelie&#39;, &#39;Gentoo&#39;))
+
+peng_sum &lt;- penguins %&gt;%
+  group_by(species) %&gt;%
+  mutate(mass_normalized = body_mass_g / max(body_mass_g, na.rm = TRUE)) %&gt;%
+  summarize(mean_mass = mean(body_mass_g, na.rm = TRUE),
+            mean_norm = mean(mass_normalized, na.rm = TRUE),
+            bill_ratio = mean(bill_length_mm / bill_depth_mm, na.rm = TRUE))</code></pre>
+<pre class="r"><code>### Create new categorical columns from existing numerics
+peng_cats &lt;- penguins %&gt;%
+  drop_na() %&gt;%
+  rename(bl = bill_length_mm, 
+         bd = bill_depth_mm, 
+         fl = flipper_length_mm, 
+         bm = body_mass_g) %&gt;%
+  mutate(bl_cat = ifelse(bl &gt; 43.92, &#39;long&#39;, &#39;short&#39;)) %&gt;%
+  # mutate(bl_cat = ifelse(bl &gt; mean(bl, na.rm = TRUE), &#39;long&#39;, &#39;short&#39;)) %&gt;%
+  mutate(bd_cat = case_when(bd &lt; 15.6 ~ &#39;shallow&#39;,
+                            bd &gt; 18.7 ~ &#39;deep&#39;,
+                            TRUE ~ &#39;medium&#39;)) %&gt;%
+  mutate(fl_quartile = ntile(fl, 4),          ### careful of handling NAs!
+         fl_quartile = factor(fl_quartile))   ### convert numeric to factor (or character?)
+
+### examine a linear model of body mass as a function of a combo of
+### different numeric and categorical variables
+peng_lm &lt;- lm(bm ~ bl + bd_cat + fl_quartile + species, data = peng_cats)
+
+summary(peng_lm) ### note reference values and effect of nonref values</code></pre>
+<pre><code>## 
+## Call:
+## lm(formula = bm ~ bl + bd_cat + fl_quartile + species, data = peng_cats)
+## 
+## Residuals:
+##     Min      1Q  Median      3Q     Max 
+## -783.23 -225.59  -19.92  191.09 1120.56 
+## 
+## Coefficients:
+##                  Estimate Std. Error t value Pr(&gt;|t|)    
+## (Intercept)      1745.683    288.182   6.058 3.83e-09 ***
+## bl                 52.922      7.294   7.255 2.98e-12 ***
+## bd_catmedium     -266.699     50.727  -5.258 2.66e-07 ***
+## bd_catshallow    -583.844     92.033  -6.344 7.54e-10 ***
+## fl_quartile2      129.364     54.416   2.377  0.01802 *  
+## fl_quartile3      266.553     71.761   3.714  0.00024 ***
+## fl_quartile4      603.425    104.475   5.776 1.80e-08 ***
+## speciesChinstrap -607.164     84.891  -7.152 5.72e-12 ***
+## speciesGentoo     810.405    127.786   6.342 7.62e-10 ***
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+## Residual standard error: 330.9 on 324 degrees of freedom
+## Multiple R-squared:  0.8352, Adjusted R-squared:  0.8312 
+## F-statistic: 205.3 on 8 and 324 DF,  p-value: &lt; 2.2e-16</code></pre>
+<p>How to interpret those coefficients? (all stats sig, p &lt; .05)</p>
+<ul>
+<li>effect of bill length on mass?</li>
+<li>effect of bill depth category? what is the reference value and
+why?</li>
+<li>effect of flipper length quartile? ref value and why?</li>
+<li>effect of species? ref value and why?</li>
+</ul>
+<p>In this case, the <code>lm()</code> function takes a categorical
+variable, assigns one value as dummy (first level if factor OR first
+alphabetically if character), then auto creates dummies (T/F or 1/0 for
+each other level/value).</p>
+<div id="what-if-our-modeling-function-required-all-dummy-vars" class="section level3">
+<h3>What if our modeling function required all dummy vars?</h3>
+<p>We can spread the various values of flipper length quartile (or bill
+depth category) into individual columns. This might be more common for
+variables with multiple, non-mutually-exclusive values (e.g.,
+<code>diet</code> may include instances of vegetables, legumes, dairy,
+each of which might need to be split into a separate column of T/F)</p>
+<pre class="r"><code>peng_cats2 &lt;- peng_cats %&gt;%
+  mutate(bd_val = TRUE) %&gt;%
+  ### try this first, note bd_val is consumed; and ask how to improve:
+  # pivot_wider(names_from = bd_cat, values_from = bd_val)
+  pivot_wider(names_from = bd_cat, values_from = bd_val, 
+              values_fill = FALSE, names_prefix = &#39;bd_&#39;) %&gt;%
+  ### ask students to do the same with another column -  e.g., species, island, 
+  ###   fl_quartile - and maybe use 1/0 or some other fill value
+  mutate(fl_val = 1) %&gt;%
+  pivot_wider(names_from = fl_quartile, values_from = fl_val,
+              values_fill = 0, names_prefix = &#39;fl_&#39;)</code></pre>
+<p>Note here, each penguin has only one TRUE value across the bd_X
+columns, since bill depth bins are mutually exclusive. But if we were
+studying something like diet, perhaps there would be multiple columns of
+food items - krill, squid, crab, etc. - potentially with multiple TRUE
+observations across the various items since they are not mutually
+exclusive.</p>
+<p>Or vice versa, if our data were encoded with a dummy column for each
+value:</p>
+<pre class="r"><code>peng_cats3 &lt;- peng_cats2 %&gt;%
+  mutate(penguin_id = 1:n()) %&gt;% ### create identifier for each penguin observation
+  pivot_longer(names_to = &#39;bd_cat&#39;, values_to = &#39;bd_val&#39;, starts_with(&#39;bd_&#39;)) %&gt;%
+  filter(bd_val == TRUE)</code></pre>
+</div>
+</div>
+<div id="lets-try-with-some-new-data" class="section level2">
+<h2>Let’s try with some new data</h2>
+<p>Now let’s try some wrangling with some data on cheating in high
+school, built into the <code>poLCA</code> package (polytomous latent
+class analysis).</p>
+<pre class="r"><code>data(cheating) ### poLCA::cheating doesn&#39;t work here... explain!
+
+### examine the data in a few ways: summary(), ggplot()
+
+summary(cheating)</code></pre>
+<pre><code>##     LIEEXAM         LIEPAPER         FRAUD          COPYEXAM    
+##  Min.   :1.000   Min.   :1.000   Min.   :1.000   Min.   :1.000  
+##  1st Qu.:1.000   1st Qu.:1.000   1st Qu.:1.000   1st Qu.:1.000  
+##  Median :1.000   Median :1.000   Median :1.000   Median :1.000  
+##  Mean   :1.107   Mean   :1.119   Mean   :1.066   Mean   :1.213  
+##  3rd Qu.:1.000   3rd Qu.:1.000   3rd Qu.:1.000   3rd Qu.:1.000  
+##  Max.   :2.000   Max.   :2.000   Max.   :2.000   Max.   :2.000  
+##                                                                 
+##       GPA       
+##  Min.   :1.000  
+##  1st Qu.:1.000  
+##  Median :2.000  
+##  Mean   :2.327  
+##  3rd Qu.:3.000  
+##  Max.   :5.000  
+##  NA&#39;s   :4</code></pre>
+<pre class="r"><code>glimpse(cheating)</code></pre>
+<pre><code>## Rows: 319
+## Columns: 5
+## $ LIEEXAM  &lt;dbl&gt; 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1…
+## $ LIEPAPER &lt;dbl&gt; 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1…
+## $ FRAUD    &lt;dbl&gt; 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1…
+## $ COPYEXAM &lt;dbl&gt; 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1…
+## $ GPA      &lt;int&gt; NA, NA, NA, NA, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, …</code></pre>
+<pre class="r"><code>?cheating</code></pre>
+<p>Some things to note:</p>
+<ul>
+<li>the variable names are all shouting! use janitor::clean_names to
+tone them down (and eliminate spaces, punctuation, etc) - defaults to
+snake case.</li>
+<li>the values are all double precision floating point numbers, except
+GPA which is integer</li>
+<li>all except GPA are scored as 1 (FALSE) or 2 (TRUE)</li>
+<li>GPA is scored as 1 (GPA &lt; 3), 2 (3.00-3.25), 3 (3.26-3.50), 4
+(3.51-3.75) and 5 (3.76-4.00).</li>
+</ul>
+<pre class="r"><code>cheating &lt;- cheating %&gt;%
+  janitor::clean_names()
+
+cheating_sum &lt;- cheating %&gt;%
+  group_by(gpa) %&gt;%
+  summarize(mean_lieexam = mean(lieexam),
+            mean_liepaper = mean(liepaper),
+            mean_fraud = mean(fraud),
+            mean_copyexam = mean(copyexam))</code></pre>
+<p>Thoughts, questions?</p>
+<p>Note: leaving as numbers, they will probably not be accurately
+interpreted as categorical!</p>
+<p>How should we recode the <code>lieexam</code>, <code>liepaper</code>,
+<code>fraud</code>, and <code>copyexam</code> variables? Discuss pros
+and cons, then everyone recode according to your preference (or
+mix-and-match!)</p>
+<p>How should we recode the GPA? multi-value discrete, or multiple
+columns of binary? Discuss pros and cons, then everyone recode according
+to your preference.</p>
+</div>
+<div id="working-with-factors-in-r" class="section level2">
+<h2>Working with factors in R</h2>
+<p>So far, we’re not explicitly working with factors, though the
+categorical values in the penguins dataframe are built-in as factors.
+Let’s use the <code>poLCA::cheaters</code> dataframe to work with
+factors a bit more.</p>
+<ul>
+<li>recode binary to TRUE/FALSE, recode GPA to ‘c’, ‘bminus’, ‘b’,
+‘bplus’, ‘a’</li>
+<li>ggplot a bar chart of grades - note anything weird?</li>
+</ul>
+<pre class="r"><code>gpa_lvls &lt;- c(&#39;c&#39;, &#39;bminus&#39;, &#39;b&#39;, &#39;bplus&#39;, &#39;a&#39;) ### leave out missing?
+
+cheat_recode &lt;- cheating %&gt;%
+  mutate(lieexam_lgl  = ifelse(lieexam == 1, FALSE, TRUE),
+         liepaper_lgl = (liepaper == 2),
+         fraud_lgl    = (fraud == 2),
+         copyexam_lgl = case_when(copyexam == 1 ~ FALSE,
+                                  copyexam == 2 ~ TRUE,
+                                  TRUE          ~ NA) ) %&gt;%
+  mutate(gpa_cat = case_when(gpa == 1 ~ &#39;c&#39;,
+                             gpa == 2 ~ &#39;bminus&#39;,
+                             gpa == 3 ~ &#39;b&#39;,
+                             gpa == 4 ~ &#39;bplus&#39;,
+                             gpa == 5 ~ &#39;a&#39;,
+                             TRUE     ~ NA_character_)) #%&gt;%
+  # mutate(gpa_cat = factor(gpa_cat, levels = gpa_lvls))
+
+ggplot(cheat_recode) +
+  geom_bar(aes(x = gpa_cat), fill = &#39;slateblue&#39;, color = &#39;darkblue&#39;) +
+  theme_minimal() +
+  labs(x = &#39;GPA&#39;)</code></pre>
+<p><img src="data:image/png;base64,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" width="672" /></p>
+<pre class="r"><code>### note grades not in order! turn into a factor!</code></pre>
+<p>See <code>across()</code> for applying mutate across multiple columns
+simultaneously! Also we can take advantage of indexes to assign values
+from a vector.</p>
+<pre class="r"><code>cheat_recode2 &lt;- cheating %&gt;%
+  mutate(across(.cols = where(is.double), .fns = ~(.x == 2), .names = &#39;{.col}_lgl&#39;)) %&gt;%
+  mutate(gpa_chr = gpa_lvls[gpa])</code></pre>
+<p>Using factors, we can turn the gpa_cat column from character to a
+factor and control the order on the plot, but ALSO the order in which a
+model function (e.g., <code>lm()</code> and probably LCA and MPlus
+modeling functions) interprets the levels!</p>
+<pre class="r"><code>glimpse(cheat_recode2)</code></pre>
+<pre><code>## Rows: 319
+## Columns: 10
+## $ lieexam      &lt;dbl&gt; 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, …
+## $ liepaper     &lt;dbl&gt; 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, …
+## $ fraud        &lt;dbl&gt; 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, …
+## $ copyexam     &lt;dbl&gt; 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, …
+## $ gpa          &lt;int&gt; NA, NA, NA, NA, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,…
+## $ lieexam_lgl  &lt;lgl&gt; FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, F…
+## $ liepaper_lgl &lt;lgl&gt; FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, F…
+## $ fraud_lgl    &lt;lgl&gt; FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, F…
+## $ copyexam_lgl &lt;lgl&gt; FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, F…
+## $ gpa_chr      &lt;chr&gt; NA, NA, NA, NA, &quot;c&quot;, &quot;c&quot;, &quot;c&quot;, &quot;c&quot;, &quot;c&quot;, &quot;c&quot;, &quot;c&quot;, &quot;c&quot;, &quot;…</code></pre>
+<pre class="r"><code>cheat_fct &lt;- cheat_recode2 %&gt;%
+  mutate(gpa_fct = factor(gpa_chr, levels = gpa_lvls)) %&gt;%
+  mutate(gpa_ord = factor(gpa_chr, levels = rev(gpa_lvls), ordered = TRUE)) %&gt;%
+  mutate(gpa_fct2 = forcats::fct_reorder(gpa_chr, gpa))
+
+### use indices to assign values
+
+glimpse(cheat_fct)</code></pre>
+<pre><code>## Rows: 319
+## Columns: 13
+## $ lieexam      &lt;dbl&gt; 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, …
+## $ liepaper     &lt;dbl&gt; 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, …
+## $ fraud        &lt;dbl&gt; 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, …
+## $ copyexam     &lt;dbl&gt; 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, …
+## $ gpa          &lt;int&gt; NA, NA, NA, NA, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,…
+## $ lieexam_lgl  &lt;lgl&gt; FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, F…
+## $ liepaper_lgl &lt;lgl&gt; FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, F…
+## $ fraud_lgl    &lt;lgl&gt; FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, F…
+## $ copyexam_lgl &lt;lgl&gt; FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, F…
+## $ gpa_chr      &lt;chr&gt; NA, NA, NA, NA, &quot;c&quot;, &quot;c&quot;, &quot;c&quot;, &quot;c&quot;, &quot;c&quot;, &quot;c&quot;, &quot;c&quot;, &quot;c&quot;, &quot;…
+## $ gpa_fct      &lt;fct&gt; NA, NA, NA, NA, c, c, c, c, c, c, c, c, c, c, c, c, c, c,…
+## $ gpa_ord      &lt;ord&gt; NA, NA, NA, NA, c, c, c, c, c, c, c, c, c, c, c, c, c, c,…
+## $ gpa_fct2     &lt;fct&gt; NA, NA, NA, NA, c, c, c, c, c, c, c, c, c, c, c, c, c, c,…</code></pre>
+<pre class="r"><code>head(cheat_fct$gpa_chr)</code></pre>
+<pre><code>## [1] NA  NA  NA  NA  &quot;c&quot; &quot;c&quot;</code></pre>
+<pre class="r"><code>head(cheat_fct$gpa_fct)</code></pre>
+<pre><code>## [1] &lt;NA&gt; &lt;NA&gt; &lt;NA&gt; &lt;NA&gt; c    c   
+## Levels: c bminus b bplus a</code></pre>
+<pre class="r"><code>head(cheat_fct$gpa_ord)</code></pre>
+<pre><code>## [1] &lt;NA&gt; &lt;NA&gt; &lt;NA&gt; &lt;NA&gt; c    c   
+## Levels: a &lt; bplus &lt; b &lt; bminus &lt; c</code></pre>
+</div>
+<div id="tidy-up-and-write-out-a-cleanedprepped-dataset" class="section level2">
+<h2>Tidy up and write out a cleaned/prepped dataset</h2>
+<p>Let’s clean up one of our cheating datasets with logical and factor
+values, then write it out for use in another script that will ingest the
+data for modeling. Note, depending on how we loaded the packages, we
+might get an error, oh noes!</p>
+<pre class="r"><code>cheat_fct_clean &lt;- cheat_fct %&gt;%
+  # select(gpa, gpa_fct, lieexam_cat, ends_with(&#39;_lgl&#39;)) ### error! check ?select
+  dplyr::select(gpa, gpa_fct, lieexam = lieexam_lgl, ends_with(&#39;_lgl&#39;)) %&gt;%
+    ### or load tidyverse after poLCA!
+  rename(liepaper = liepaper_lgl, fraud = fraud_lgl, copyexam = copyexam_lgl)
+  
+### create a data folder, then save out our clean dataframe
+write_csv(cheat_fct_clean, here(&#39;data&#39;, &#39;cheating_data_cleaned.csv&#39;))</code></pre>
+<p>Now read in the cleaned data - what do you note about our factor
+column? it’s just a character column again! R doesn’t store the
+“factorness” of the column in the saved file. Discuss, how to turn it
+back into a factor again, with levels in the right order? Try it and see
+what you can figure out.</p>
+<pre class="r"><code>cheat_clean &lt;- read_csv(here(&#39;data/cheating_data_cleaned.csv&#39;)) 
+glimpse(cheat_clean)</code></pre>
+<pre><code>## Rows: 319
+## Columns: 6
+## $ gpa      &lt;dbl&gt; NA, NA, NA, NA, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, …
+## $ gpa_fct  &lt;chr&gt; NA, NA, NA, NA, &quot;c&quot;, &quot;c&quot;, &quot;c&quot;, &quot;c&quot;, &quot;c&quot;, &quot;c&quot;, &quot;c&quot;, &quot;c&quot;, &quot;c&quot;, …
+## $ lieexam  &lt;lgl&gt; FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE…
+## $ liepaper &lt;lgl&gt; FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE…
+## $ fraud    &lt;lgl&gt; FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE…
+## $ copyexam &lt;lgl&gt; FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE…</code></pre>
+<pre class="r"><code>cheat_clean &lt;- cheat_clean %&gt;%
+  mutate(gpa_fct = fct_reorder(gpa_fct, gpa))
+glimpse(cheat_clean)</code></pre>
+<pre><code>## Rows: 319
+## Columns: 6
+## $ gpa      &lt;dbl&gt; NA, NA, NA, NA, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, …
+## $ gpa_fct  &lt;fct&gt; NA, NA, NA, NA, c, c, c, c, c, c, c, c, c, c, c, c, c, c, c, …
+## $ lieexam  &lt;lgl&gt; FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE…
+## $ liepaper &lt;lgl&gt; FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE…
+## $ fraud    &lt;lgl&gt; FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE…
+## $ copyexam &lt;lgl&gt; FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE…</code></pre>
+<pre class="r"><code>head(cheat_clean$gpa_fct)</code></pre>
+<pre><code>## [1] &lt;NA&gt; &lt;NA&gt; &lt;NA&gt; &lt;NA&gt; c    c   
+## Levels: c bminus b bplus a</code></pre>
 </div>
 
 
