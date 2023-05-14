@@ -401,13 +401,38 @@ leave this chunk and go to another.</li>
 </ul>
 <p>Let’s load some packages! Note: not a bad idea to do in setup chunk,
 but make sure to set up code chunk headers correctly!</p>
-<pre class="r"><code>library(poLCA) ### LCA package with some more data we&#39;ll use
-library(tidyverse) 
-  ### dialect of R - cleans up and standardizes a lot of wrangling and data vis.
+<pre class="r"><code>library(poLCA) ### LCA package with some more data we&#39;ll use</code></pre>
+<pre><code>## Warning: package &#39;poLCA&#39; was built under R version 4.2.3</code></pre>
+<pre><code>## Loading required package: scatterplot3d</code></pre>
+<pre><code>## Loading required package: MASS</code></pre>
+<pre class="r"><code>library(tidyverse) </code></pre>
+<pre><code>## Warning: package &#39;tidyverse&#39; was built under R version 4.2.2</code></pre>
+<pre><code>## Warning: package &#39;ggplot2&#39; was built under R version 4.2.2</code></pre>
+<pre><code>## Warning: package &#39;tidyr&#39; was built under R version 4.2.2</code></pre>
+<pre><code>## Warning: package &#39;readr&#39; was built under R version 4.2.2</code></pre>
+<pre><code>## Warning: package &#39;purrr&#39; was built under R version 4.2.2</code></pre>
+<pre><code>## Warning: package &#39;dplyr&#39; was built under R version 4.2.2</code></pre>
+<pre><code>## Warning: package &#39;stringr&#39; was built under R version 4.2.2</code></pre>
+<pre><code>## Warning: package &#39;forcats&#39; was built under R version 4.2.2</code></pre>
+<pre><code>## Warning: package &#39;lubridate&#39; was built under R version 4.2.2</code></pre>
+<pre><code>## ── Attaching core tidyverse packages ──────────────────────── tidyverse 2.0.0 ──
+## ✔ dplyr     1.1.0     ✔ readr     2.1.4
+## ✔ forcats   1.0.0     ✔ stringr   1.5.0
+## ✔ ggplot2   3.4.1     ✔ tibble    3.1.8
+## ✔ lubridate 1.9.2     ✔ tidyr     1.3.0
+## ✔ purrr     1.0.1</code></pre>
+<pre><code>## ── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──
+## ✖ dplyr::filter() masks stats::filter()
+## ✖ dplyr::lag()    masks stats::lag()
+## ✖ dplyr::select() masks MASS::select()
+## ℹ Use the ]8;;http://conflicted.r-lib.org/conflicted package]8;; to force all conflicts to become errors</code></pre>
+<pre class="r"><code>  ### dialect of R - cleans up and standardizes a lot of wrangling and data vis.
   ### note the packages listed in the message!
 
-library(here) ### helps with creating relative pathways relative to .Rproj
-library(palmerpenguins) ### some data we&#39;ll explore</code></pre>
+library(here) ### helps with creating relative pathways relative to .Rproj</code></pre>
+<pre><code>## here() starts at C:/Users/casey/Documents/github/immerse_day3_wrangling_practice</code></pre>
+<pre class="r"><code>library(palmerpenguins) ### some data we&#39;ll explore</code></pre>
+<pre><code>## Warning: package &#39;palmerpenguins&#39; was built under R version 4.2.2</code></pre>
 <p>At this point, knit the document to create a .html - note the
 warnings and errors - go back and adjust the setup chunk to avoid
 this.</p>
@@ -490,7 +515,7 @@ variables:</p>
 income levels
 <ul>
 <li>binary vs. nominal vs. ordinal (or dichotomous vs. polytomous)</li>
-<li><code>ntile()</code>, <code>ifelse()</code>, and
+<li><code>cut()</code>, <code>ntile()</code>, <code>ifelse()</code>, and
 <code>case_when()</code></li>
 </ul></li>
 <li>multi-value discretes as factors - ordered or unordered</li>
@@ -563,13 +588,21 @@ peng_cats &lt;- penguins %&gt;%
          bd = bill_depth_mm, 
          fl = flipper_length_mm, 
          bm = body_mass_g) %&gt;%
+  ### ifelse for binary
   mutate(bl_cat = ifelse(bl &gt; 43.92, &#39;long&#39;, &#39;short&#39;)) %&gt;%
   # mutate(bl_cat = ifelse(bl &gt; mean(bl, na.rm = TRUE), &#39;long&#39;, &#39;short&#39;)) %&gt;%
+  ### logical test for binary
+  mutate(bl_long_lgl = (bl &gt; 43.92)) %&gt;%
+  # mutate(bl_long_lgl = (bl &gt; median(bl, na.rm = TRUE))) %&gt;%
+  ### case_when for multiple assigned values
   mutate(bd_cat = case_when(bd &lt; 15.6 ~ &#39;shallow&#39;,
                             bd &gt; 18.7 ~ &#39;deep&#39;,
                             TRUE ~ &#39;medium&#39;)) %&gt;%
-  mutate(fl_quartile = ntile(fl, 4),          ### careful of handling NAs!
-         fl_quartile = factor(fl_quartile))   ### convert numeric to factor (or character?)
+  ### ntile for equal-sized groups
+  mutate(fl_quartile = ntile(fl, 4),            ### careful of handling NAs!
+         fl_quartile = factor(fl_quartile)) %&gt;% ### convert numeric to factor
+  ### cut for equal-sized bins
+  mutate(bm_cut = cut(bm, 5)) ### already a factor
 
 ### examine a linear model of body mass as a function of a combo of
 ### different numeric and categorical variables
@@ -680,6 +713,7 @@ summary(cheating)</code></pre>
 ## $ COPYEXAM &lt;dbl&gt; 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1…
 ## $ GPA      &lt;int&gt; NA, NA, NA, NA, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, …</code></pre>
 <pre class="r"><code>?cheating</code></pre>
+<pre><code>## starting httpd help server ... done</code></pre>
 <p>Some things to note:</p>
 <ul>
 <li>the variable names are all shouting! use janitor::clean_names to
@@ -771,9 +805,14 @@ modeling functions) interprets the levels!</p>
 <pre class="r"><code>cheat_fct &lt;- cheat_recode2 %&gt;%
   mutate(gpa_fct = factor(gpa_chr, levels = gpa_lvls)) %&gt;%
   mutate(gpa_ord = factor(gpa_chr, levels = rev(gpa_lvls), ordered = TRUE)) %&gt;%
-  mutate(gpa_fct2 = forcats::fct_reorder(gpa_chr, gpa))
-
-### use indices to assign values
+  mutate(gpa_fct2 = forcats::fct_reorder(gpa_chr, gpa))</code></pre>
+<pre><code>## Warning: There was 1 warning in `mutate()`.
+## ℹ In argument: `gpa_fct2 = forcats::fct_reorder(gpa_chr, gpa)`.
+## Caused by warning:
+## ! `fct_reorder()` removing 4 missing values.
+## ℹ Use `.na_rm = TRUE` to silence this message.
+## ℹ Use `.na_rm = FALSE` to preserve NAs.</code></pre>
+<pre class="r"><code>### use indices to assign values
 
 glimpse(cheat_fct)</code></pre>
 <pre><code>## Rows: 319
@@ -819,8 +858,17 @@ column? it’s just a character column again! R doesn’t store the
 “factorness” of the column in the saved file. Discuss, how to turn it
 back into a factor again, with levels in the right order? Try it and see
 what you can figure out.</p>
-<pre class="r"><code>cheat_clean &lt;- read_csv(here(&#39;data/cheating_data_cleaned.csv&#39;)) 
-glimpse(cheat_clean)</code></pre>
+<pre class="r"><code>cheat_clean &lt;- read_csv(here(&#39;data/cheating_data_cleaned.csv&#39;)) </code></pre>
+<pre><code>## Rows: 319 Columns: 6
+## ── Column specification ────────────────────────────────────────────────────────
+## Delimiter: &quot;,&quot;
+## chr (1): gpa_fct
+## dbl (1): gpa
+## lgl (4): lieexam, liepaper, fraud, copyexam
+## 
+## ℹ Use `spec()` to retrieve the full column specification for this data.
+## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.</code></pre>
+<pre class="r"><code>glimpse(cheat_clean)</code></pre>
 <pre><code>## Rows: 319
 ## Columns: 6
 ## $ gpa      &lt;dbl&gt; NA, NA, NA, NA, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, …
@@ -830,8 +878,14 @@ glimpse(cheat_clean)</code></pre>
 ## $ fraud    &lt;lgl&gt; FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE…
 ## $ copyexam &lt;lgl&gt; FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE…</code></pre>
 <pre class="r"><code>cheat_clean &lt;- cheat_clean %&gt;%
-  mutate(gpa_fct = fct_reorder(gpa_fct, gpa))
-glimpse(cheat_clean)</code></pre>
+  mutate(gpa_fct = fct_reorder(gpa_fct, gpa))</code></pre>
+<pre><code>## Warning: There was 1 warning in `mutate()`.
+## ℹ In argument: `gpa_fct = fct_reorder(gpa_fct, gpa)`.
+## Caused by warning:
+## ! `fct_reorder()` removing 4 missing values.
+## ℹ Use `.na_rm = TRUE` to silence this message.
+## ℹ Use `.na_rm = FALSE` to preserve NAs.</code></pre>
+<pre class="r"><code>glimpse(cheat_clean)</code></pre>
 <pre><code>## Rows: 319
 ## Columns: 6
 ## $ gpa      &lt;dbl&gt; NA, NA, NA, NA, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, …

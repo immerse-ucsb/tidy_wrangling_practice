@@ -93,7 +93,7 @@ Several use cases to explore, focusing on working with discrete variables:
 
 - continuous variable but want to turn it into discrete, e.g., binning income levels
     - binary vs. nominal vs. ordinal (or dichotomous vs. polytomous)
-    - `ntile()`, `ifelse()`, and `case_when()`
+    - `cut()`, `ntile()`, `ifelse()`, and `case_when()`
 - multi-value discretes as factors - ordered or unordered
 - spreading multi-valued discretes into multiple dummies
 
@@ -132,13 +132,21 @@ peng_cats <- penguins %>%
          bd = bill_depth_mm, 
          fl = flipper_length_mm, 
          bm = body_mass_g) %>%
+  ### ifelse for binary
   mutate(bl_cat = ifelse(bl > 43.92, 'long', 'short')) %>%
   # mutate(bl_cat = ifelse(bl > mean(bl, na.rm = TRUE), 'long', 'short')) %>%
+  ### logical test for binary
+  mutate(bl_long_lgl = (bl > 43.92)) %>%
+  # mutate(bl_long_lgl = (bl > median(bl, na.rm = TRUE))) %>%
+  ### case_when for multiple assigned values
   mutate(bd_cat = case_when(bd < 15.6 ~ 'shallow',
                             bd > 18.7 ~ 'deep',
                             TRUE ~ 'medium')) %>%
-  mutate(fl_quartile = ntile(fl, 4),          ### careful of handling NAs!
-         fl_quartile = factor(fl_quartile))   ### convert numeric to factor (or character?)
+  ### ntile for equal-sized groups
+  mutate(fl_quartile = ntile(fl, 4),            ### careful of handling NAs!
+         fl_quartile = factor(fl_quartile)) %>% ### convert numeric to factor
+  ### cut for equal-sized bins
+  mutate(bm_cut = cut(bm, 5)) ### already a factor
 
 ### examine a linear model of body mass as a function of a combo of
 ### different numeric and categorical variables
