@@ -2,11 +2,16 @@
 title: 'Day 3: Data wrangling practice: teacher key'
 author: "Casey O'Hara"
 date: "2023-05-08"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+```{r setup, include=TRUE}
+
+### Set message and warning to FALSE to suppress warnings and messages during 
+### package loading (e.g, library(tidyverse))
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 ```
 
 Tour of R project:
@@ -122,11 +127,14 @@ peng_sum <- penguins %>%
   summarize(mean_mass = mean(body_mass_g, na.rm = TRUE),
             mean_norm = mean(mass_normalized, na.rm = TRUE),
             bill_ratio = mean(bill_length_mm / bill_depth_mm, na.rm = TRUE))
+
+peng_sum
 ```
 
 ```{r}
 ### Create new categorical columns from existing numerics
 peng_cats <- penguins %>%
+  select(-island, -sex, -year) %>%
   drop_na() %>%
   rename(bl = bill_length_mm, 
          bd = bill_depth_mm, 
@@ -148,6 +156,14 @@ peng_cats <- penguins %>%
   ### cut for equal-sized bins
   mutate(bm_cut = cut(bm, 5)) ### already a factor
 
+head(peng_cats)
+```
+
+## Left off here for Day 3 synchronous session - run the above then continue from here!
+
+Try out some categorical values in context of a linear model to see how R interprets things!
+
+``` {r}
 ### examine a linear model of body mass as a function of a combo of
 ### different numeric and categorical variables
 peng_lm <- lm(bm ~ bl + bd_cat + fl_quartile + species, data = peng_cats)
@@ -160,13 +176,14 @@ How to interpret those coefficients?  (all stats sig, p < .05)
 - effect of bill length on mass?
 - effect of bill depth category? what is the reference value and why?
 - effect of flipper length quartile?  ref value and why?
-- effect of species? ref value and why?
+- effect of species? reference value and why?
 
 In this case, the `lm()` function takes a categorical variable, assigns one value as dummy (first level if factor OR first alphabetically if character), then auto creates dummies (T/F or 1/0 for each other level/value).
 
 ### What if our modeling function required all dummy vars?
 
-We can spread the various values of flipper length quartile (or bill depth category) into individual columns.  This might be more common for variables with multiple, non-mutually-exclusive values (e.g., `diet` may include instances of vegetables, legumes, dairy, each of which might need to be split into a separate column of T/F)
+We can spread the various values of flipper length quartile (or bill depth category) into individual columns.  This might be more common for variables with multiple, non-mutually-exclusive values (e.g., `diet` may include instances of vegetables, legumes, dairy, each of which might need to be split into a separate column of T/F).  
+
 
 ```{r}
 peng_cats2 <- peng_cats %>%
@@ -181,148 +198,19 @@ peng_cats2 <- peng_cats %>%
   pivot_wider(names_from = fl_quartile, values_from = fl_val,
               values_fill = 0, names_prefix = 'fl_')
 
-
+head(peng_cats2)
 ```
 
 Note here, each penguin has only one TRUE value across the bd_X columns, since bill depth bins are mutually exclusive.  But if we were studying something like diet, perhaps there would be multiple columns of food items - krill, squid, crab, etc. - potentially with multiple TRUE observations across the various items since they are not mutually exclusive.
 
-Or vice versa, if our data were encoded with a dummy column for each value:
+If our data were in a wide format but we wanted to turn it into a long format, we can use `pivot_longer()` to gather multiple columns into a key-value pair of columns.  Note before pivot_longer we create a penguin_id column because we may have some observations with multiple TRUE values, in which case we'd have multiple rows for a single penguin.  That's not tidy data!  (but in this case, we only have one row per observation so we're OK)
 
 ```{r}
 peng_cats3 <- peng_cats2 %>%
   mutate(penguin_id = 1:n()) %>% ### create identifier for each penguin observation
   pivot_longer(names_to = 'bd_cat', values_to = 'bd_val', starts_with('bd_')) %>%
   filter(bd_val == TRUE)
-```
 
-
-
-## Let's try with some new data
-
-Now let's try some wrangling with some data on cheating in high school, built into the `poLCA` package (polytomous latent class analysis).
-
-```{r}
-data(cheating) ### poLCA::cheating doesn't work here... explain!
-
-### examine the data in a few ways: summary(), ggplot()
-
-summary(cheating)
-glimpse(cheating)
-?cheating
-
-```
-
-Some things to note:
-
-- the variable names are all shouting!  use janitor::clean_names to tone them down (and eliminate spaces, punctuation, etc) - defaults to snake case.
-- the values are all double precision floating point numbers, except GPA which is integer
-- all except GPA are scored as 1 (FALSE) or 2 (TRUE)
-- GPA is scored as 1 (GPA < 3), 2 (3.00-3.25), 3 (3.26-3.50), 4 (3.51-3.75) and 5 (3.76-4.00).
-
-```{r}
-cheating <- cheating %>%
-  janitor::clean_names()
-
-cheating_sum <- cheating %>%
-  group_by(gpa) %>%
-  summarize(mean_lieexam = mean(lieexam),
-            mean_liepaper = mean(liepaper),
-            mean_fraud = mean(fraud),
-            mean_copyexam = mean(copyexam))
-```
-
-Thoughts, questions?
-
-Note: leaving as numbers, they will probably not be accurately interpreted as categorical!  
-
-How should we recode the `lieexam`, `liepaper`, `fraud`, and `copyexam` variables?  Discuss pros and cons, then everyone recode according to your preference (or mix-and-match!)
-
-How should we recode the GPA?   multi-value discrete, or multiple columns of binary?  Discuss pros and cons, then everyone recode according to your preference.
-
-## Working with factors in R
-
-So far, we're not explicitly working with factors, though the categorical values in the penguins dataframe are built-in as factors.  Let's use the `poLCA::cheaters` dataframe to work with factors a bit more.
-
-- recode binary to TRUE/FALSE, recode GPA to 'c', 'bminus', 'b', 'bplus', 'a'
-- ggplot a bar chart of grades - note anything weird?
-
-```{r}
-
-gpa_lvls <- c('c', 'bminus', 'b', 'bplus', 'a') ### leave out missing?
-
-cheat_recode <- cheating %>%
-  mutate(lieexam_lgl  = ifelse(lieexam == 1, FALSE, TRUE),
-         liepaper_lgl = (liepaper == 2),
-         fraud_lgl    = (fraud == 2),
-         copyexam_lgl = case_when(copyexam == 1 ~ FALSE,
-                                  copyexam == 2 ~ TRUE,
-                                  TRUE          ~ NA) ) %>%
-  mutate(gpa_cat = case_when(gpa == 1 ~ 'c',
-                             gpa == 2 ~ 'bminus',
-                             gpa == 3 ~ 'b',
-                             gpa == 4 ~ 'bplus',
-                             gpa == 5 ~ 'a',
-                             TRUE     ~ NA_character_)) #%>%
-  # mutate(gpa_cat = factor(gpa_cat, levels = gpa_lvls))
-
-ggplot(cheat_recode) +
-  geom_bar(aes(x = gpa_cat), fill = 'slateblue', color = 'darkblue') +
-  theme_minimal() +
-  labs(x = 'GPA')
-### note grades not in order! turn into a factor!
-```
-
-See `across()` for applying mutate across multiple columns simultaneously!  Also we can take advantage of indexes to assign values from a vector.
-
-```{r more methods for mutate}
-cheat_recode2 <- cheating %>%
-  mutate(across(.cols = where(is.double), .fns = ~(.x == 2), .names = '{.col}_lgl')) %>%
-  mutate(gpa_chr = gpa_lvls[gpa])
-```
-
-Using factors, we can turn the gpa_cat column from character to a factor and control the order on the plot, but ALSO the order in which a model function (e.g., `lm()` and probably LCA and MPlus modeling functions) interprets the levels!
-
-```{r}
-glimpse(cheat_recode2)
-
-cheat_fct <- cheat_recode2 %>%
-  mutate(gpa_fct = factor(gpa_chr, levels = gpa_lvls)) %>%
-  mutate(gpa_ord = factor(gpa_chr, levels = rev(gpa_lvls), ordered = TRUE)) %>%
-  mutate(gpa_fct2 = forcats::fct_reorder(gpa_chr, gpa))
-
-### use indices to assign values
-
-glimpse(cheat_fct)
-head(cheat_fct$gpa_chr)
-head(cheat_fct$gpa_fct)
-head(cheat_fct$gpa_ord)
-```
-
-## Tidy up and write out a cleaned/prepped dataset
-
-Let's clean up one of our cheating datasets with logical and factor values, then write it out for use in another script that will ingest the data for modeling.  Note, depending on how we loaded the packages, we might get an error, oh noes!
-
-```{r}
-cheat_fct_clean <- cheat_fct %>%
-  # select(gpa, gpa_fct, lieexam_cat, ends_with('_lgl')) ### error! check ?select
-  dplyr::select(gpa, gpa_fct, lieexam = lieexam_lgl, ends_with('_lgl')) %>%
-    ### or load tidyverse after poLCA!
-  rename(liepaper = liepaper_lgl, fraud = fraud_lgl, copyexam = copyexam_lgl)
-  
-### create a data folder, then save out our clean dataframe
-write_csv(cheat_fct_clean, here('data', 'cheating_data_cleaned.csv'))
-
-```
-
-Now read in the cleaned data - what do you note about our factor column?  it's just a character column again!  R doesn't store the "factorness" of the column in the saved file.  Discuss, how to turn it back into a factor again, with levels in the right order?  Try it and see what you can figure out.
-
-```{r}
-cheat_clean <- read_csv(here('data/cheating_data_cleaned.csv')) 
-glimpse(cheat_clean)
-
-cheat_clean <- cheat_clean %>%
-  mutate(gpa_fct = fct_reorder(gpa_fct, gpa))
-glimpse(cheat_clean)
-head(cheat_clean$gpa_fct)
+head(peng_cats3)
 ```
 
