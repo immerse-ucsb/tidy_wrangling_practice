@@ -136,20 +136,22 @@ penguins <- palmerpenguins::penguins
 
 Describe data
 
-Note: We do not need to "tidy" data as the `penguins` dataset is already in tidy format
-
 ```{r}
 summary(penguins)
 glimpse(penguins)
-head(penguins)
+head(penguins) # Use head() to check if we need to "tidy" the data
+
+#We do not need to "tidy" data as the `penguins` dataset is already in tidy format
 ```
 
 Wrangle data (subset)
 
 ```{r}
 peng_subset <- penguins %>%
-  select(species, bill_depth_mm, body_mass_g) %>%
-  filter(species %in% c('Adelie', 'Gentoo'))
+  select(species, bill_depth_mm, body_mass_g) %>% # Select three variables
+  filter(species %in% c('Adelie', 'Gentoo')) %>% # Filter by two species
+  mutate(body_mass_g = ifelse(is.na(body_mass_g), -999, body_mass_g), # One way to relabel NA
+         bill_depth_mm = replace_na(bill_depth_mm, -1)) # Better way to relabel NA
 ```
 
 Wrangle data (create variables using existing variables)
@@ -157,7 +159,7 @@ Wrangle data (create variables using existing variables)
 ```{r}
 peng_sum <- penguins %>%
   group_by(species) %>%
-  mutate(mass_normalized = body_mass_g / max(body_mass_g, na.rm = TRUE)) %>%
+  mutate(mass_normalized = body_mass_g / max(body_mass_g, na.rm = TRUE)) %>% # create new variables
   summarize(mean_mass = mean(body_mass_g, na.rm = TRUE),
             mean_norm = mean(mass_normalized, na.rm = TRUE),
             bill_ratio = mean(bill_length_mm / bill_depth_mm, na.rm = TRUE))
@@ -184,12 +186,10 @@ peng_cats <- penguins %>%
   ### case_when for multiple assigned values
   mutate(bd_cat = case_when(bd < 15.6 ~ 'shallow',
                             bd > 18.7 ~ 'deep',
-                            TRUE ~ 'medium')) %>%
+                            TRUE ~ 'medium')) %>% #anything in between
   ### ntile for equal-sized groups
   mutate(fl_quartile = ntile(fl, 4),            ### careful of handling NAs!
-         fl_quartile = factor(fl_quartile)) %>% ### convert numeric to factor
-  ### cut for equal-sized bins
-  mutate(bm_cut = cut(bm, 5)) ### already a factor
+         fl_quartile = factor(fl_quartile))  ### convert numeric to factor
 
 head(peng_cats)
 ```
@@ -264,7 +264,7 @@ mass_flipper <- ggplot(data = penguins,
              size = 3,
              alpha = 0.8) +
   scale_color_manual(values = c("darkorange","purple","cyan4")) +
-  labs(title = "Penguin size, Palmer Station LTER",
+  labs(title = "Penguin size",
        subtitle = "Flipper length and body mass for Adelie, Chinstrap and Gentoo Penguins",
        x = "Flipper length (mm)",
        y = "Body mass (g)",
@@ -272,8 +272,8 @@ mass_flipper <- ggplot(data = penguins,
        shape = "Penguin species") +
   theme(legend.position = c(0.2, 0.7),
         plot.title.position = "plot",
-        plot.caption = element_text(hjust = 0, face= "italic"),
-        plot.caption.position = "plot")
+        plot.caption = element_text(hjust = 0, face= "italic")
+       )
 
 mass_flipper
 ```
