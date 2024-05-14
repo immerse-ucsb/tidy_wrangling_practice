@@ -251,9 +251,9 @@ peng_cats3 <- peng_cats2 %>%
 head(peng_cats3)
 ```
 
+---
 
 ## Visualize
-
 
 ```{r}
 mass_flipper <- ggplot(data = penguins, 
