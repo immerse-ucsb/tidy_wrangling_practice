@@ -1,10 +1,17 @@
 ---
 title: 'Day 3: Data wrangling practice: teacher key'
-author: "Casey O'Hara"
-date: "2023-05-08"
+author: "IMMERSE Training Team"
+date: "Updated: `r format(Sys.time(), '%B %d, %Y')`"
 output:
-  pdf_document: default
-  html_document: default
+  html_document:
+    toc: yes
+    toc_float: yes
+    theme: flatly
+  pdf_document:
+    toc: yes
+editor_options: 
+  markdown: 
+    wrap: sentence
 ---
 
 ```{r setup, include=TRUE}
@@ -108,19 +115,43 @@ Here we will:
 - Convert some columns into categoricals
 - Run a simple linear regression to see how R handles categoricals
 
+---
+
+## Import
+
+Load `penguins` data
+
 ```{r}
 penguins <- palmerpenguins::penguins 
 ### NOT normal way to load data - usually reading in a CSV
 ### could also do data(penguins)
+```
 
+---
+
+## Transform
+
+Describe data
+
+Note: We do not need to "tidy" data as the `penguins` dataset is already in tidy format
+
+```{r}
 summary(penguins)
 glimpse(penguins)
 head(penguins)
+```
 
+Wrangle data (subset)
+
+```{r}
 peng_subset <- penguins %>%
   select(species, bill_depth_mm, body_mass_g) %>%
   filter(species %in% c('Adelie', 'Gentoo'))
+```
 
+Wrangle data (create variables using existing variables)
+
+```{r}
 peng_sum <- penguins %>%
   group_by(species) %>%
   mutate(mass_normalized = body_mass_g / max(body_mass_g, na.rm = TRUE)) %>%
@@ -131,8 +162,9 @@ peng_sum <- penguins %>%
 peng_sum
 ```
 
+Wrangle data (create new categorical columns from existing numerics)
+
 ```{r}
-### Create new categorical columns from existing numerics
 peng_cats <- penguins %>%
   select(-island, -sex, -year) %>%
   drop_na() %>%
@@ -159,7 +191,9 @@ peng_cats <- penguins %>%
 head(peng_cats)
 ```
 
-## Left off here for Day 3 synchronous session - run the above then continue from here!
+---
+
+## Model
 
 Try out some categorical values in context of a linear model to see how R interprets things!
 
@@ -212,5 +246,32 @@ peng_cats3 <- peng_cats2 %>%
   filter(bd_val == TRUE)
 
 head(peng_cats3)
+```
+
+
+## Visualize
+
+
+```{r}
+mass_flipper <- ggplot(data = penguins, 
+                       aes(x = flipper_length_mm,
+                           y = body_mass_g)) +
+  geom_point(aes(color = species, 
+                 shape = species),
+             size = 3,
+             alpha = 0.8) +
+  scale_color_manual(values = c("darkorange","purple","cyan4")) +
+  labs(title = "Penguin size, Palmer Station LTER",
+       subtitle = "Flipper length and body mass for Adelie, Chinstrap and Gentoo Penguins",
+       x = "Flipper length (mm)",
+       y = "Body mass (g)",
+       color = "Penguin species",
+       shape = "Penguin species") +
+  theme(legend.position = c(0.2, 0.7),
+        plot.title.position = "plot",
+        plot.caption = element_text(hjust = 0, face= "italic"),
+        plot.caption.position = "plot")
+
+mass_flipper
 ```
 

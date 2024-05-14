@@ -1,0 +1,280 @@
+---
+title: 'Day 3: Data wrangling practice: teacher key'
+author: "IMMERSE Training Team"
+date: "Updated: `r format(Sys.time(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: yes
+    toc_float: yes
+    theme: flatly
+  pdf_document:
+    toc: yes
+editor_options: 
+  markdown: 
+    wrap: sentence
+---
+
+```{r setup, include=TRUE}
+
+### Set message and warning to FALSE to suppress warnings and messages during 
+### package loading (e.g, library(tidyverse))
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+```
+
+Tour of R project:
+
+- So far, just a file with a .Rproj extension.  This file indicates "home base" for this project - the root directory.  
+- If we move this project directory somewhere else on our hard drive, that .Rproj goes with it.  
+- We can use that to our advantage to ensure all file paths are coded relative to that file.
+- The alternative (absolute file paths) tend to point to your specific computer's name and directory system, which will not match anyone else's.
+
+Tour of R Markdown:
+
+- Markdown chunks: 
+    - easily format text using shortcuts to HTML tags.
+    - These chunks are useful to write notes, comments, and explanations about what you are intending to do with your code.  
+- code chunks:
+    - shaded differently for ease of spotting them
+    - start with a "fence" - three backticks, then a curly-brace header with info about the chunk, including language, label, and chunk options.
+    - write all your R code - objects will stay in memory even if you leave this chunk and go to another.
+    - end with another fence.
+    - can type manually, or shortcuts or menu.
+
+Let's load some packages!  Note: not a bad idea to do in setup chunk, but make sure to set up code chunk headers correctly!
+
+```{r load packages}
+library(poLCA) ### LCA package with some more data we'll use
+library(tidyverse) 
+  ### dialect of R - cleans up and standardizes a lot of wrangling and data vis.
+  ### note the packages listed in the message!
+
+library(here) ### helps with creating relative pathways relative to .Rproj
+library(palmerpenguins) ### some data we'll explore
+```
+
+At this point, knit the document to create a .html - note the warnings and errors - go back and adjust the setup chunk to avoid this.
+
+## Tidyverse overview
+
+### What is `tidyverse`?
+
+The `tidyverse` package is a metapackage containing multiple other packages that have various uses for data wrangling, analysis, and visualization.  The main ones we care about are:
+
+- `readr` - fast and efficient reading in of data from CSVs and other tabular formats
+- `dplyr` - managing, modifying, and working with data frames - 95% of our data wrangling toolbox
+- `tidyr` - swapping between tabular formats - wide vs. long
+- `ggplot2` - data visualization
+- `forcats` - working with categorical variables in dataframes
+
+Others you may be interested in:
+
+- `stringr` - working with string/character data
+- `purrr` - iteration
+- `lubridate` - working with date formatted data
+- `tidymodels` - consistent modeling across multiple model types
+
+Base R is totally fine too, but the syntax is often idiosyncratic and/or hard to interpret.  The `tidyverse` packages were designed to smooth out inconsistencies, improve readability, and in many cases boost performance.  A good data scientist would want to be proficient in both dialects (and maybe `data.table`) as well as other languages.
+
+### Tidy data principles
+
+- Each variable forms a column.
+- Each observation forms a row.
+- Each type of observational unit forms a table
+
+counter examples:
+
+- Column headers are values, not variable names.
+- Multiple variables are stored in one column.
+- Variables are stored in both rows and columns.
+- Multiple types of observational units are stored in the same table.
+- A single observational unit is stored in multiple tables.
+
+![](img/billboard_untidy.png)
+
+![](img/billboard_tidyish.png)
+
+### Tidy wrangling in R
+
+- Dataframe as main data type - columns are vectors of a particular class
+- `mutate`, `filter`, `select`, `group_by`/`summarize` are the key dplyr functions in a data wrangling workflow
+- Pipe operator `%>%` (or `|>` now native to R) for communicating flow - also vertical organization, spacing, etc to make it easy to read
+- `pivot_wider` and `pivot_longer` (older: `spread` and `gather`) are key `tidyr` functions to go from wide to long and back, depending on needs of a modeling function
+
+---
+
+*Enough chitchat, let's get to it*
+
+Several use cases to explore, focusing on working with discrete variables:
+
+- continuous variable but want to turn it into discrete, e.g., binning income levels
+    - binary vs. nominal vs. ordinal (or dichotomous vs. polytomous)
+    - `cut()`, `ntile()`, `ifelse()`, and `case_when()`
+- multi-value discretes as factors - ordered or unordered
+- spreading multi-valued discretes into multiple dummies
+
+Here we will:
+
+- Load a dataset built into an R package and inspect it
+- Convert some columns into categoricals
+- Run a simple linear regression to see how R handles categoricals
+
+---
+
+## Import
+
+Load `penguins` data
+
+```{r}
+penguins <- palmerpenguins::penguins 
+### NOT normal way to load data - usually reading in a CSV
+### could also do data(penguins)
+```
+
+---
+
+## Transform
+
+Describe data
+
+Note: We do not need to "tidy" data as the `penguins` dataset is already in tidy format
+
+```{r}
+summary(penguins)
+glimpse(penguins)
+head(penguins)
+```
+
+Wrangle data (subset)
+
+```{r}
+peng_subset <- penguins %>%
+  select(species, bill_depth_mm, body_mass_g) %>%
+  filter(species %in% c('Adelie', 'Gentoo'))
+```
+
+Wrangle data (create variables using existing variables)
+
+```{r}
+peng_sum <- penguins %>%
+  group_by(species) %>%
+  mutate(mass_normalized = body_mass_g / max(body_mass_g, na.rm = TRUE)) %>%
+  summarize(mean_mass = mean(body_mass_g, na.rm = TRUE),
+            mean_norm = mean(mass_normalized, na.rm = TRUE),
+            bill_ratio = mean(bill_length_mm / bill_depth_mm, na.rm = TRUE))
+
+peng_sum
+```
+
+Wrangle data (create new categorical columns from existing numerics)
+
+```{r}
+peng_cats <- penguins %>%
+  select(-island, -sex, -year) %>%
+  drop_na() %>%
+  rename(bl = bill_length_mm, 
+         bd = bill_depth_mm, 
+         fl = flipper_length_mm, 
+         bm = body_mass_g) %>%
+  ### ifelse for binary
+  mutate(bl_cat = ifelse(bl > 43.92, 'long', 'short')) %>%
+  # mutate(bl_cat = ifelse(bl > mean(bl, na.rm = TRUE), 'long', 'short')) %>%
+  ### logical test for binary
+  mutate(bl_long_lgl = (bl > 43.92)) %>%
+  # mutate(bl_long_lgl = (bl > median(bl, na.rm = TRUE))) %>%
+  ### case_when for multiple assigned values
+  mutate(bd_cat = case_when(bd < 15.6 ~ 'shallow',
+                            bd > 18.7 ~ 'deep',
+                            TRUE ~ 'medium')) %>%
+  ### ntile for equal-sized groups
+  mutate(fl_quartile = ntile(fl, 4),            ### careful of handling NAs!
+         fl_quartile = factor(fl_quartile)) %>% ### convert numeric to factor
+  ### cut for equal-sized bins
+  mutate(bm_cut = cut(bm, 5)) ### already a factor
+
+head(peng_cats)
+```
+
+---
+
+## Model
+
+Try out some categorical values in context of a linear model to see how R interprets things!
+
+``` {r}
+### examine a linear model of body mass as a function of a combo of
+### different numeric and categorical variables
+peng_lm <- lm(bm ~ bl + bd_cat + fl_quartile + species, data = peng_cats)
+
+summary(peng_lm) ### note reference values and effect of nonref values
+```
+
+How to interpret those coefficients?  (all stats sig, p < .05)
+
+- effect of bill length on mass?
+- effect of bill depth category? what is the reference value and why?
+- effect of flipper length quartile?  ref value and why?
+- effect of species? reference value and why?
+
+In this case, the `lm()` function takes a categorical variable, assigns one value as dummy (first level if factor OR first alphabetically if character), then auto creates dummies (T/F or 1/0 for each other level/value).
+
+### What if our modeling function required all dummy vars?
+
+We can spread the various values of flipper length quartile (or bill depth category) into individual columns.  This might be more common for variables with multiple, non-mutually-exclusive values (e.g., `diet` may include instances of vegetables, legumes, dairy, each of which might need to be split into a separate column of T/F).  
+
+
+```{r}
+peng_cats2 <- peng_cats %>%
+  mutate(bd_val = TRUE) %>%
+  ### try this first, note bd_val is consumed; and ask how to improve:
+  # pivot_wider(names_from = bd_cat, values_from = bd_val)
+  pivot_wider(names_from = bd_cat, values_from = bd_val, 
+              values_fill = FALSE, names_prefix = 'bd_') %>%
+  ### ask students to do the same with another column -  e.g., species, island, 
+  ###   fl_quartile - and maybe use 1/0 or some other fill value
+  mutate(fl_val = 1) %>%
+  pivot_wider(names_from = fl_quartile, values_from = fl_val,
+              values_fill = 0, names_prefix = 'fl_')
+
+head(peng_cats2)
+```
+
+Note here, each penguin has only one TRUE value across the bd_X columns, since bill depth bins are mutually exclusive.  But if we were studying something like diet, perhaps there would be multiple columns of food items - krill, squid, crab, etc. - potentially with multiple TRUE observations across the various items since they are not mutually exclusive.
+
+If our data were in a wide format but we wanted to turn it into a long format, we can use `pivot_longer()` to gather multiple columns into a key-value pair of columns.  Note before pivot_longer we create a penguin_id column because we may have some observations with multiple TRUE values, in which case we'd have multiple rows for a single penguin.  That's not tidy data!  (but in this case, we only have one row per observation so we're OK)
+
+```{r}
+peng_cats3 <- peng_cats2 %>%
+  mutate(penguin_id = 1:n()) %>% ### create identifier for each penguin observation
+  pivot_longer(names_to = 'bd_cat', values_to = 'bd_val', starts_with('bd_')) %>%
+  filter(bd_val == TRUE)
+
+head(peng_cats3)
+```
+
+
+## Visualize
+
+
+```{r}
+mass_flipper <- ggplot(data = penguins, 
+                       aes(x = flipper_length_mm,
+                           y = body_mass_g)) +
+  geom_point(aes(color = species, 
+                 shape = species),
+             size = 3,
+             alpha = 0.8) +
+  scale_color_manual(values = c("darkorange","purple","cyan4")) +
+  labs(title = "Penguin size, Palmer Station LTER",
+       subtitle = "Flipper length and body mass for Adelie, Chinstrap and Gentoo Penguins",
+       x = "Flipper length (mm)",
+       y = "Body mass (g)",
+       color = "Penguin species",
+       shape = "Penguin species") +
+  theme(legend.position = c(0.2, 0.7),
+        plot.title.position = "plot",
+        plot.caption = element_text(hjust = 0, face= "italic"),
+        plot.caption.position = "plot")
+
+mass_flipper
+```
+
